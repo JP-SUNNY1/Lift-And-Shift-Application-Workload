@@ -98,36 +98,36 @@ Virtualization team, DC OPS Team, Monitoring team, Sys Admins etc are involved.
   1. Login to AWS Account
   2. Create Security groups :
 
-  - First we create a security group for our load balancer: Go to EC2, security groups , click on create SG, give a name mig-ELB-SG , give description Security group for mig prod Load Balancer
+  - First we create a security group for our load balancer: Go to EC2, security groups , click on create SG, give a name vprofile-ELB-SG , give description Security group for vprofile prod Load Balancer
     Give inbound rules of
 
                         http , port: 80 , allow : anywhere
                         https , port : 443 , allow : anywhere
 
-  - Second create a security group for tomcat server: name mig-app-SG , give description Security group for tomcat instances
+  - Second create a security group for tomcat server: name vprofile-app-SG , give description Security group for tomcat instances
     Give inbound rules of
 
                   Custom TCP, port: 8080 , allow : only from SG of load balancer , description : allow traffic from ELB.
 
                   Custom TCP, port: 22 , allow : only from my ipp addr , description : allows ssh from me .Custom TCP, port: 8080 , allow : only from my ipp addr ,                      description : allows ssh from me .
 
-   - Third ,create a security group for the backend services(rmq,mc,mysql): name mig-db-sg , give description Security group for mig backend serivces
+   - Third ,create a security group for the backend services(rmq,mc,mysql): name vprofile-db-sg , give description Security group for vprofile backend serivces
      Give inbound rules of
 
                   Custom TCP, port: 22 , allow : only from my ipp addr , description : allows ssh from my ip .
 
-                  MYSQL/Aurora, port: 3304 , allow : only from SG of app , description : allow 3306 traffic from application server.Custom TCP, port: 11211 , allow :                    only from SG of app , description : allow tomcat to connect to memcache.Custom TCP, port: 5672 , allow : only from SG of app , description : allows                    tomcat to connect to rabbitmq.All taffic, port: ALL , allow : only from SG of app , description : allow internal traffic to flow on all ports.*here                    all backend servers are to interact with each other so we open port `All`*
+                  MYSQL/Aurora, port: 3304 , allow : only from SG of app , description : allow 3306 traffic from application server.Custom TCP, port: 11211 , allow :                    only from SG of app , description : allow tomcat to connect to mmigemcache.Custom TCP, port: 5672 , allow : only from SG of app , description : allows                    tomcat to connect to rabbitmq.All taffic, port: ALL , allow : only from SG of app , description : allow internal traffic to flow on all ports.*here                    all backend servers are to interact with each other so we open port `All`*
 
-      note: you need to update your ip regularly if your public ip is changing regularly
+      note: we need to update our ip regularly if our public ip is changing regularly
 
       save it
 
- 3. Create key pairs : go to key pair, create keypair and name to mig-prod-key and download it to your system
+ 3. Create key pairs : go to key pair, create keypair and name to vprofile-prod-key and download it to our system
 
  4. Lunch Instances with user data [BASH SCRIPTS]
 
     go to this (github-link)[https://github.com/Rietta1/migeration.git] and clone it locally, run git checkout aws-LiftAndshift to change branch...
-    go to the folder userdata and you will see the scripts to implement each service on the ec2 instance
+    go to the folder userdata and we will see the scripts to implement each service on the ec2 instance
     lunch 4 ec2 instance , add the bash scripts to the lunch configuration and lunch
 
 tomcat_ubuntu.sh for app01 server. (ubuntu 22)
@@ -227,12 +227,12 @@ rabbitmq.sh for rmq01 (almalinux 9)
 
 3. Update IP to name mapping in route 53
 
-   - go to route53 on aws, then create a private hosted zone named mig.in , add the vpc of the same region (us-east-1) where your servers are placed , click on create      hosted zone
-   - create record, click simple routing, subdomain : db01 [mig.in] , A- records, place your db01 private ip address.
+   - go to route53 on aws, then create a private hosted zone named vprofile-project.in , add the vpc of the same region (us-east-1) where our servers are placed , click on create      hosted zone
+   - create record, click simple routing, subdomain : db01 [vprofile-project.in] , A- records, place our db01 private ip address.
    - Do same for mc01 and rmq01
-   - add mig.in to src/main/resources/application.properties
+   - add vprofile-project.in to src/main/resources/application.properties
 
-Go to rc/main/resources/application.properties and add the .mig.in to the backend names   
+Go to rc/main/resources/application.properties and add the .vprofile-project.in to the backend names   
 ![infra 3](https://github.com/user-attachments/assets/fa46c0e3-4b59-4d50-a118-ec090c5058fa)
 
 
@@ -241,7 +241,7 @@ Go to rc/main/resources/application.properties and add the .mig.in to the backen
 1. Build Application from source code
 
 - We would build the artifact locally on our vscode, push it to s3 bucket and then deploy it to our tomcat server
-- go tho the folder with pom.xml and build your artifact with maven
+- go tho the folder with pom.xml and build our artifact with maven
 - run mvn install to build the artifact
 - A target file is created with a vprofile.v2.war inside.
 
@@ -249,20 +249,20 @@ Go to rc/main/resources/application.properties and add the .mig.in to the backen
 
 - Go to IAM on the console and the USERS,=> click on ADD USERS,=> create a user called s3admin,=> attach policy directly amazons3fullaccess and create user
 - Go to USERS,=> SECURITY,=> CREATE ACCESS KEY,=> use CLI interface, create access key and download it.
-- Configure your aws cli in your vscode aws configure add the keys details.
+- Configure our aws cli in our vscode aws configure add the keys details.
 - list buckets aws s3 ls
-- now create a bucket from the cli aws s3 mb s3://mig-vpro-arts remember bucket names are like domain names, one name can be owned by one person world wide
-- copy the artifacts to the bucket aws s3 cp target/vprofile-v2.war s3://mig-vpro-arts/
+- now create a bucket from the cli aws s3 mb s3://vpro-arts remember bucket names are like domain names, one name can be owned by one person world wide
+- copy the artifacts to the bucket aws s3 cp target/vprofile-v2.war s3://vpro-arts/
 
  We could check our s3 bucket and see the artifacts there was the upload is completed
 
-- Now download the artifact into your tomcat ec2 instance
+- Now download the artifact into our tomcat ec2 instance
 
  We can use IAM access keys configuration in the instance, but there is a better way
 
  - we create an IAM ROLE, just like we created a user , and attach this role to our instance
- - go to IAM,create IAM ROLE,=> AWS service, => EC2 , search for the policy amazons3fullaccess => give role a name mig-vprof-s3, then create role.
- - go to the instance , ACTION => SECURITY => MODIFY IAM ROLE, select the role created mig-vprof-s3, => UPDATE IAM ROLE
+ - go to IAM,create IAM ROLE,=> AWS service, => EC2 , search for the policy amazons3fullaccess => give role a name vprof-s3, then create role.
+ - go to the instance , ACTION => SECURITY => MODIFY IAM ROLE, select the role created vprof-s3, => UPDATE IAM ROLE
  - ssh into the tomcat server ,
 
        sudo -i
@@ -270,7 +270,7 @@ Go to rc/main/resources/application.properties and add the .mig.in to the backen
        install awscli -y
 
        aws s3 ls#copy vprofile-v2.war from the s3 bucket to the tmp folder in the instance
-       aws s3 cp s3://mig-vpr-arts/vprofile-v2.war /tmp/systemctl stop tomcat9
+       aws s3 cp s3://vpr-arts/vprofile-v2.war /tmp/systemctl stop tomcat9
        rm -rf /var/lib/tomcat9/webapps/ROOT
        cp /tmp/vprofile-v2.war /var/lib/tomcat9/webbapps/ROOT.war
        systemctl start tomcat9
@@ -288,8 +288,8 @@ Go to rc/main/resources/application.properties and add the .mig.in to the backen
 
 We are going to create an Application load balancer, so we create a target group first.
 
-  - go to LOAD BALANCER, => TARGET GROUP, => NAME: mig-app-TG, => PROTOCOL; HTTP:8080 , => HEALTH CHECK: /login , => click OVERRIDE : 8080, => HEALTHY TRESHOLD:3, => select the APP01 instance, => click INCLUDE AS PENDING BELOW, => create target group.
-  - go to LOAD BALANCER and create, select APPLICATION LOAD BALANCER, => create, => NAME: mig-prod-ELB , => INTERNET FACING, => IPV4, => select ALL THE ZONES, SECURITY GROUP: mig-ELB-sg , => LISTENER; HTTPS:443:mig-app-TG, select the ACM CERT:rietta.online, => add another LISTENER; HTTP:80:mig-app-TG, then create load balancer
+  - go to LOAD BALANCER, => TARGET GROUP, => NAME: vprofile-app-TG, => PROTOCOL; HTTP:8080 , => HEALTH CHECK: /login , => click OVERRIDE : 8080, => HEALTHY TRESHOLD:3, => select the APP01 instance, => click INCLUDE AS PENDING BELOW, => create target group.
+  - go to LOAD BALANCER and create, select APPLICATION LOAD BALANCER, => create, => NAME: vprofile-prod-ELB , => INTERNET FACING, => IPV4, => select ALL THE ZONES, SECURITY GROUP: vprofile-ELB-sg , => LISTENER; HTTPS:443:vprofile-app-TG, select the ACM CERT:rietta.online, => add another LISTENER; HTTP:80:vprofile-app-TG, then create load balancer
 
 3. DNS
 
